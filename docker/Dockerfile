@@ -31,5 +31,3 @@ USER root
 ENV PATH="/home/linuxbrew/.linuxbrew/bin:${PATH}"
 
 RUN brew install zig --HEAD
-
-COPY red_amber_green.rb /usr/local/bin
