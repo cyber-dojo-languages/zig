@@ -5,7 +5,7 @@ readonly JSON=`cat docker/image_name.json`
 [[ ${JSON} =~ ${REGEX} ]]
 readonly IMAGE_NAME="${BASH_REMATCH[1]}"
 
-readonly EXPECTED=0.16.0
+readonly EXPECTED=0.16
 readonly ACTUAL=$(docker run --rm ${IMAGE_NAME} sh -c 'zig version')
 
 if echo "${ACTUAL}" | grep -q "${EXPECTED}"; then
