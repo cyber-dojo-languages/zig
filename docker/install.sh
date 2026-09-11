@@ -1,39 +1,52 @@
 #!/bin/sh -eu
 
-# Installs the official Zig release tarball from ziglang.org.
+# Installs the newest stable Zig release from ziglang.org.
 # The linux tarballs are statically linked against musl, so they
 # run on Alpine as-is. The lib/ tree must stay next to the zig
 # binary or the standard library will not resolve.
 
-readonly ZIG_VERSION=0.16.0
+apk add --no-cache jq xz
+
+readonly INDEX=/tmp/zig-index.json
+wget -O "${INDEX}" https://ziglang.org/download/index.json
 
 case "$(uname -m)" in
-  x86_64)
-    readonly ARCH=x86_64
-    readonly SHA256=70e49664a74374b48b51e6f3fdfbf437f6395d42509050588bd49abe52ba3d00
-    ;;
-  aarch64)
-    readonly ARCH=aarch64
-    readonly SHA256=ea4b09bfb22ec6f6c6ceac57ab63efb6b46e17ab08d21f69f3a48b38e1534f17
-    ;;
+  x86_64)  readonly TARGET=x86_64-linux ;;
+  aarch64) readonly TARGET=aarch64-linux ;;
   *)
     echo "Unsupported architecture $(uname -m)" >&2
     exit 1
     ;;
 esac
 
-readonly TARBALL="zig-${ARCH}-linux-${ZIG_VERSION}.tar.xz"
-readonly URL="https://ziglang.org/download/${ZIG_VERSION}/${TARBALL}"
+# The index lists master first, which is a development build, and then the
+# releases newest first. So the first key that is not master is the newest
+# stable release, and the version is not written down here.
+readonly ZIG_VERSION=$(jq --raw-output \
+  'to_entries | map(select(.key != "master")) | .[0].key' "${INDEX}")
 
-apk add --no-cache xz
+# The index carries the checksum beside the tarball it belongs to, so taking
+# both from it keeps the download verified without naming either here.
+readonly URL=$(jq --raw-output --arg v "${ZIG_VERSION}" --arg t "${TARGET}" \
+  '.[$v][$t].tarball' "${INDEX}")
+readonly SHA256=$(jq --raw-output --arg v "${ZIG_VERSION}" --arg t "${TARGET}" \
+  '.[$v][$t].shasum' "${INDEX}")
+
+readonly TARBALL=$(basename "${URL}")
 
 wget -O "/tmp/${TARBALL}" "${URL}"
 echo "${SHA256}  /tmp/${TARBALL}" | sha256sum --check --status
 
 mkdir --parents /usr/local/lib
 tar --extract --xz --file="/tmp/${TARBALL}" --directory=/usr/local/lib
-mv "/usr/local/lib/zig-${ARCH}-linux-${ZIG_VERSION}" /usr/local/lib/zig
+# The tarball unpacks to a directory named after itself, so the name is taken
+# from the tarball rather than rebuilt from the version and the target.
+mv "/usr/local/lib/$(basename "${TARBALL}" .tar.xz)" /usr/local/lib/zig
 ln --symbolic /usr/local/lib/zig/zig /usr/local/bin/zig
 
-rm "/tmp/${TARBALL}"
-apk del xz
+# Read by check_version.sh, so the gate states the version this image holds
+# rather than one written down when someone last edited it.
+echo "{\"zig\":\"${ZIG_VERSION}\"}" > /versions.json
+
+rm "/tmp/${TARBALL}" "${INDEX}"
+apk del jq xz
