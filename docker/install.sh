@@ -46,7 +46,15 @@ ln --symbolic /usr/local/lib/zig/zig /usr/local/bin/zig
 
 # Read by check_version.sh, so the gate states the version this image holds
 # rather than one written down when someone last edited it.
-echo "{\"zig\":\"${ZIG_VERSION}\"}" > /versions.json
+cat > /versions.json <<EOF
+{
+  "language": {
+    "name": "Zig",
+    "version": "${ZIG_VERSION}"
+  },
+  "test_frameworks": []
+}
+EOF
 
 rm "/tmp/${TARBALL}" "${INDEX}"
 apk del jq xz

@@ -8,7 +8,7 @@ readonly IMAGE_NAME="${BASH_REMATCH[1]}"
 # Written down here so the gate fails when the floating base image moves to a
 # different zig. Reading it from the image instead would compare the image
 # against itself and pass whatever the move brought in.
-readonly EXPECTED=0.16
+readonly EXPECTED=0.17
 
 # Asks the installed compiler, so the gate fails when the zig the image can
 # actually run is not the one named above. Matching on the leading major.minor
